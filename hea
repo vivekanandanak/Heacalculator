@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HEA Mixing Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #070a0f;
+  --surface: #0d1117;
+  --surface2: #131920;
+  --border: #1e2d3d;
+  --accent: #00e5ff;
+  --accent2: #ff6b35;
+  --accent3: #a8ff3e;
+  --text: #c9d8e8;
+  --muted: #4a6075;
+  --good: #a8ff3e;
+  --warn: #ffd166;
+  --bad: #ff4d6d;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Background grid */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container { position: relative; z-index: 1; max-width: 1000px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+header {
+  text-align: center;
+  padding: 3rem 0 2rem;
+  position: relative;
+}
+header::after {
+  content: '';
+  display: block;
+  width: 120px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  margin: 1.5rem auto 0;
+}
+.badge {
+  display: inline-block;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 0.3rem 0.8rem;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+}
+h1 {
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 800;
+  line-height: 1.1;
+  color: #fff;
+}
+h1 span { color: var(--accent); }
+header p { color: var(--muted); margin-top: 0.8rem; font-size: 0.95rem; }
+
+/* Element Grid */
+.section-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
+.element-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 2rem;
+}
+
+.el-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.el-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--el-color);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.el-card:hover::before { opacity: 0.06; }
+.el-card.active { border-color: var(--el-color); }
+.el-card.active::before { opacity: 0.12; }
+
+.el-symbol {
+  font-family: 'Space Mono', monospace;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--el-color);
+  position: relative;
+}
+.el-name { font-size: 0.7rem; color: var(--muted); position: relative; margin-top: 0.1rem; }
+
+.fraction-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  position: relative;
+}
+.fraction-input {
+  width: 60px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: #fff;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.4rem;
+  text-align: center;
+}
+.fraction-input:focus { outline: none; border-color: var(--el-color); }
+.frac-label { font-size: 0.65rem; color: var(--muted); }
+
+/* Equimolar button */
+.equimolar-btn {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  padding: 0.5rem 1.2rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  letter-spacing: 0.05em;
+  margin-bottom: 2rem;
+}
+.equimolar-btn:hover { background: var(--accent); color: #000; }
+
+/* Results Panel */
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.2rem;
+  position: relative;
+  overflow: hidden;
+}
+.result-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--indicator-color, var(--muted));
+  transition: background 0.4s;
+}
+
+.result-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+.result-value {
+  font-family: 'Space Mono', monospace;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #fff;
+  transition: color 0.4s;
+}
+.result-unit { font-size: 0.75rem; color: var(--muted); margin-left: 0.2rem; }
+.result-verdict {
+  font-size: 0.72rem;
+  margin-top: 0.4rem;
+  font-weight: 600;
+}
+
+/* Verdict Banner */
+.verdict-banner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.verdict-icon { font-size: 2.5rem; }
+.verdict-text h3 { font-size: 1.1rem; color: #fff; margin-bottom: 0.3rem; }
+.verdict-text p { font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
+
+/* Composition bar */
+.comp-bar-wrap { margin-bottom: 2rem; }
+.comp-bar {
+  display: flex;
+  height: 40px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+.comp-bar div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  color: #000;
+  font-weight: 700;
+  transition: flex 0.4s;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Formula Display */
+.formula-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+.formula-box h3 { font-size: 0.9rem; color: var(--accent); margin-bottom: 1rem; font-family: 'Space Mono', monospace; }
+.formula {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.85rem;
+  color: #e0e0e0;
+  line-height: 2;
+}
+.formula em { color: var(--accent2); font-style: normal; }
+.formula .val { color: var(--accent3); }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--muted);
+}
+.empty-state .big { font-size: 3rem; margin-bottom: 1rem; }
+
+@media(max-width: 600px) {
+  .results-grid { grid-template-columns: 1fr 1fr; }
+  .element-grid { grid-template-columns: repeat(3, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div class="badge">Thermodynamic Calculator</div>
+  <h1>HEA <span>Mixing</span> Calculator</h1>
+  <p>Select elements, set mole fractions, and compute real thermodynamic stability parameters</p>
+</header>
+
+<div class="section-label">① Select Elements (choose 2–6)</div>
+<div class="element-grid" id="elementGrid"></div>
+
+<button class="equimolar-btn" onclick="setEquimolar()">⟳ Set Equimolar (equal fractions)</button>
+
+<div id="compBarWrap" class="comp-bar-wrap" style="display:none">
+  <div class="section-label">Composition</div>
+  <div class="comp-bar" id="compBar"></div>
+</div>
+
+<div id="resultsSection">
+  <div class="empty-state">
+    <div class="big">⚗️</div>
+    <p>Select at least 2 elements above to begin calculating</p>
+  </div>
+</div>
+
+</div>
+
+<script>
+// Element data: symbol, name, atomic radius (pm), melting point (K), color
+const ELEMENTS = [
+  { sym: 'Cr', name: 'Chromium',   r: 128, tm: 2180, color: '#4a9eff' },
+  { sym: 'Mn', name: 'Manganese',  r: 127, tm: 1519, color: '#ff6b9d' },
+  { sym: 'Fe', name: 'Iron',       r: 126, tm: 1811, color: '#ff9f43' },
+  { sym: 'Co', name: 'Cobalt',     r: 125, tm: 1768, color: '#a8ff3e' },
+  { sym: 'Ni', name: 'Nickel',     r: 124, tm: 1728, color: '#c084fc' },
+  { sym: 'Ti', name: 'Titanium',   r: 145, tm: 1941, color: '#38bdf8' },
+  { sym: 'Al', name: 'Aluminium',  r: 143, tm: 933,  color: '#fbbf24' },
+  { sym: 'Cu', name: 'Copper',     r: 128, tm: 1358, color: '#fb923c' },
+  { sym: 'Mo', name: 'Molybdenum', r: 139, tm: 2896, color: '#34d399' },
+  { sym: 'Zr', name: 'Zirconium',  r: 160, tm: 2128, color: '#f472b6' },
+  { sym: 'V',  name: 'Vanadium',   r: 134, tm: 2183, color: '#818cf8' },
+  { sym: 'W',  name: 'Tungsten',   r: 139, tm: 3695, color: '#64748b' },
+];
+
+// Binary mixing enthalpies (kJ/mol) — Miedema model approximations
+// Only pairs defined; others default to 0
+const H_MIX = {
+  'Cr-Mn':-4,'Cr-Fe':-1,'Cr-Co':-4,'Cr-Ni':-7,'Cr-Ti':-7,'Cr-Al':-10,'Cr-Cu':12,'Cr-Mo':-4,'Cr-Zr':-12,'Cr-V':-2,'Cr-W':0,
+  'Mn-Fe':-2,'Mn-Co':-5,'Mn-Ni':-8,'Mn-Ti':-8,'Mn-Al':-19,'Mn-Cu':4,'Mn-Mo':-4,'Mn-Zr':-10,'Mn-V':-1,'Mn-W':-5,
+  'Fe-Co':-1,'Fe-Ni':-2,'Fe-Ti':-17,'Fe-Al':-11,'Fe-Cu':13,'Fe-Mo':-2,'Fe-Zr':-25,'Fe-V':-7,'Fe-W':0,
+  'Co-Ni':-0,'Co-Ti':-28,'Co-Al':-19,'Co-Cu':6,'Co-Mo':-5,'Co-Zr':-41,'Co-V':-14,'Co-W':-3,
+  'Ni-Ti':-35,'Ni-Al':-22,'Ni-Cu':4,'Ni-Mo':-7,'Ni-Zr':-49,'Ni-V':-18,'Ni-W':-3,
+  'Ti-Al':-30,'Ti-Cu':-9,'Ti-Mo':-4,'Ti-Zr':0,'Ti-V':-2,'Ti-W':-27,
+  'Al-Cu':-1,'Al-Mo':-2,'Al-Zr':-44,'Al-V':-16,'Al-W':-2,
+  'Cu-Mo':19,'Cu-Zr':-23,'Cu-V':5,'Cu-W':20,
+  'Mo-Zr':-6,'Mo-V':-1,'Mo-W':0,
+  'Zr-V':-4,'Zr-W':-27,
+  'V-W':-1
+};
+
+function getH(a, b) {
+  const k1 = `${a}-${b}`, k2 = `${b}-${a}`;
+  if (H_MIX[k1] !== undefined) return H_MIX[k1];
+  if (H_MIX[k2] !== undefined) return H_MIX[k2];
+  return 0;
+}
+
+const R = 8.314;
+let selected = {}; // sym -> fraction
+
+function initGrid() {
+  const grid = document.getElementById('elementGrid');
+  ELEMENTS.forEach(el => {
+    const card = document.createElement('div');
+    card.className = 'el-card';
+    card.id = 'card-' + el.sym;
+    card.style.setProperty('--el-color', el.color);
+    card.innerHTML = `
+      <div class="el-symbol">${el.sym}</div>
+      <div class="el-name">${el.name}</div>
+      <div class="fraction-row" id="frow-${el.sym}" style="display:none">
+        <input class="fraction-input" id="frac-${el.sym}" type="number" min="0" max="1" step="0.01" value="0.20" style="border-color:${el.color}">
+        <span class="frac-label">mol fr.</span>
+      </div>
+    `;
+    card.addEventListener('click', (e) => {
+      if (e.target.tagName === 'INPUT') return;
+      toggleElement(el.sym);
+    });
+    card.querySelector('input').addEventListener('input', () => calculate());
+    grid.appendChild(card);
+  });
+}
+
+function toggleElement(sym) {
+  const card = document.getElementById('card-' + sym);
+  const frow = document.getElementById('frow-' + sym);
+  if (selected[sym] !== undefined) {
+    delete selected[sym];
+    card.classList.remove('active');
+    frow.style.display = 'none';
+  } else {
+    if (Object.keys(selected).length >= 6) return;
+    selected[sym] = 0.2;
+    card.classList.add('active');
+    frow.style.display = 'flex';
+  }
+  setEquimolar();
+}
+
+function setEquimolar() {
+  const syms = Object.keys(selected);
+  if (!syms.length) return;
+  const frac = (1 / syms.length).toFixed(4);
+  syms.forEach(s => {
+    selected[s] = parseFloat(frac);
+    document.getElementById('frac-' + s).value = frac;
+  });
+  calculate();
+}
+
+function getFractions() {
+  const syms = Object.keys(selected);
+  let fracs = {};
+  let total = 0;
+  syms.forEach(s => {
+    const v = parseFloat(document.getElementById('frac-' + s).value) || 0;
+    fracs[s] = v;
+    total += v;
+  });
+  return { fracs, total };
+}
+
+function calculate() {
+  const syms = Object.keys(selected);
+  if (syms.length < 2) {
+    document.getElementById('resultsSection').innerHTML = `<div class="empty-state"><div class="big">⚗️</div><p>Select at least 2 elements above to begin calculating</p></div>`;
+    document.getElementById('compBarWrap').style.display = 'none';
+    return;
+  }
+
+  const { fracs, total } = getFractions();
+  if (total <= 0) return;
+
+  // Normalize
+  const x = {};
+  syms.forEach(s => x[s] = fracs[s] / total);
+
+  // 1. Mixing Entropy
+  let dS = 0;
+  syms.forEach(s => { if (x[s] > 0) dS += x[s] * Math.log(x[s]); });
+  dS = -R * dS;
+
+  // 2. Mixing Enthalpy
+  let dH = 0;
+  for (let i = 0; i < syms.length; i++) {
+    for (let j = i+1; j < syms.length; j++) {
+      const Omega = 4 * getH(syms[i], syms[j]);
+      dH += Omega * x[syms[i]] * x[syms[j]];
+    }
+  }
+
+  // 3. Average atomic radius & delta
+  let rBar = 0;
+  syms.forEach(s => { rBar += x[s] * ELEMENTS.find(e=>e.sym===s).r; });
+  let delta2 = 0;
+  syms.forEach(s => {
+    const r = ELEMENTS.find(e=>e.sym===s).r;
+    delta2 += x[s] * Math.pow(1 - r/rBar, 2);
+  });
+  const delta = Math.sqrt(delta2) * 100;
+
+  // 4. Average Tm
+  let Tm = 0;
+  syms.forEach(s => { Tm += x[s] * ELEMENTS.find(e=>e.sym===s).tm; });
+
+  // 5. Omega parameter
+  const Omega_param = Math.abs(dH) > 0.001 ? (Tm * dS / (Math.abs(dH) * 1000)) : 999;
+
+  // Thresholds
+  const isHEA = dS >= 1.5 * R;
+  const dHok = dH >= -15 && dH <= 5;
+  const deltaOk = delta < 6.6;
+  const omegaOk = Omega_param >= 1.1;
+
+  // Composition bar
+  const compBar = document.getElementById('compBar');
+  const compWrap = document.getElementById('compBarWrap');
+  compWrap.style.display = 'block';
+  compBar.innerHTML = '';
+  syms.forEach(s => {
+    const el = ELEMENTS.find(e=>e.sym===s);
+    const div = document.createElement('div');
+    div.style.flex = x[s];
+    div.style.background = el.color;
+    div.textContent = syms.length <= 5 ? `${s} ${(x[s]*100).toFixed(0)}%` : s;
+    compBar.appendChild(div);
+  });
+
+  // Verdict
+  const allGood = isHEA && dHok && deltaOk && omegaOk;
+  const someGood = isHEA || omegaOk;
+  let verdictIcon, verdictTitle, verdictDesc;
+  if (allGood) {
+    verdictIcon = '✅';
+    verdictTitle = 'Excellent HEA candidate!';
+    verdictDesc = 'All stability criteria are met. This composition is likely to form a stable single-phase solid solution — a true high entropy alloy.';
+  } else if (someGood) {
+    verdictIcon = '⚠️';
+    verdictTitle = 'Partial stability — may form multi-phase structure';
+    verdictDesc = 'Some criteria are not met. This alloy may partially phase-separate. Adjust fractions or element selection to improve stability.';
+  } else {
+    verdictIcon = '❌';
+    verdictTitle = 'Poor HEA candidate';
+    verdictDesc = 'Multiple stability criteria fail. This composition is likely to separate into brittle intermetallic phases rather than a uniform solid solution.';
+  }
+
+  // Formula string
+  const formula = syms.map(s => `${s}<sub>${(x[s]).toFixed(3)}</sub>`).join('');
+
+  document.getElementById('resultsSection').innerHTML = `
+    <div class="section-label">② Results</div>
+
+    <div class="verdict-banner">
+      <div class="verdict-icon">${verdictIcon}</div>
+      <div class="verdict-text">
+        <h3>${verdictTitle}</h3>
+        <p>${verdictDesc}</p>
+      </div>
+    </div>
+
+    <div class="results-grid">
+      <div class="result-card" style="--indicator-color:${isHEA ? 'var(--good)' : 'var(--bad)'}">
+        <div class="result-label">ΔS_mix (Mixing Entropy)</div>
+        <div class="result-value" style="color:${isHEA?'var(--good)':'var(--bad)'}">${dS.toFixed(2)}<span class="result-unit">J/mol·K</span></div>
+        <div class="result-verdict" style="color:${isHEA?'var(--good)':'var(--bad)'}">
+          ${isHEA ? '✓ ≥ 1.5R = 12.47 — True HEA' : '✗ < 1.5R = 12.47 — Not HEA range'}
+        </div>
+      </div>
+
+      <div class="result-card" style="--indicator-color:${dHok ? 'var(--good)' : 'var(--warn)'}">
+        <div class="result-label">ΔH_mix (Mixing Enthalpy)</div>
+        <div class="result-value" style="color:${dHok?'var(--good)':'var(--warn)'}">${dH.toFixed(1)}<span class="result-unit">kJ/mol</span></div>
+        <div class="result-verdict" style="color:${dHok?'var(--good)':'var(--warn)'}">
+          ${dHok ? '✓ Between −15 and +5 kJ/mol' : '✗ Outside ideal range (−15 to +5)'}
+        </div>
+      </div>
+
+      <div class="result-card" style="--indicator-color:${deltaOk ? 'var(--good)' : 'var(--bad)'}">
+        <div class="result-label">δ (Atomic Size Mismatch)</div>
+        <div class="result-value" style="color:${deltaOk?'var(--good)':'var(--bad)'}">${delta.toFixed(2)}<span class="result-unit">%</span></div>
+        <div class="result-verdict" style="color:${deltaOk?'var(--good)':'var(--bad)'}">
+          ${deltaOk ? '✓ < 6.6% — Lattice stable' : '✗ ≥ 6.6% — Too much lattice strain'}
+        </div>
+      </div>
+
+      <div class="result-card" style="--indicator-color:${omegaOk ? 'var(--good)' : (Omega_param > 0 ? 'var(--warn)' : 'var(--bad)')}">
+        <div class="result-label">Ω (Stability Parameter)</div>
+        <div class="result-value" style="color:${omegaOk?'var(--good)':'var(--warn)'}">${Omega_param > 99 ? '∞' : Omega_param.toFixed(2)}</div>
+        <div class="result-verdict" style="color:${omegaOk?'var(--good)':'var(--warn)'}">
+          ${omegaOk ? '✓ ≥ 1.1 — Entropy dominates' : '✗ < 1.1 — Enthalpy may dominate'}
+        </div>
+      </div>
+
+      <div class="result-card">
+        <div class="result-label">Average Melting Point T_m</div>
+        <div class="result-value">${Math.round(Tm)}<span class="result-unit">K</span></div>
+        <div class="result-verdict" style="color:var(--muted)">${(Tm - 273).toFixed(0)}°C</div>
+      </div>
+
+      <div class="result-card">
+        <div class="result-label">Number of Elements</div>
+        <div class="result-value">${syms.length}</div>
+        <div class="result-verdict" style="color:${isHEA?'var(--good)':'var(--warn)'}">
+          ${syms.length >= 5 ? '✓ Qualifies as HEA (≥5)' : '⚠ < 5 elements (medium entropy)'}
+        </div>
+      </div>
+    </div>
+
+    <div class="formula-box">
+      <h3>// Equations Used</h3>
+      <div class="formula">
+        <b style="color:#fff">1. Mixing Entropy:</b><br>
+        ΔS_mix = <em>−R</em> × Σ(<em>xᵢ</em> × ln(<em>xᵢ</em>)) = <span class="val">${dS.toFixed(3)} J/mol·K</span><br><br>
+
+        <b style="color:#fff">2. Mixing Enthalpy:</b><br>
+        ΔH_mix = Σ <em>Ωᵢⱼ</em> × <em>xᵢ</em> × <em>xⱼ</em>  where  Ωᵢⱼ = 4×ΔH_AB = <span class="val">${dH.toFixed(2)} kJ/mol</span><br><br>
+
+        <b style="color:#fff">3. Atomic Size Mismatch:</b><br>
+        δ = √[Σ <em>xᵢ</em>(1 − <em>rᵢ</em>/<em>r̄</em>)²] × 100% = <span class="val">${delta.toFixed(3)}%</span><br><br>
+
+        <b style="color:#fff">4. Stability Parameter:</b><br>
+        Ω = <em>T_m</em> × ΔS_mix / |ΔH_mix| = <span class="val">${Omega_param > 99 ? '∞ (ΔH≈0)' : Omega_param.toFixed(3)}</span><br><br>
+
+        <b style="color:#fff">Composition:</b> ${formula}
+      </div>
+    </div>
+  `;
+}
+
+initGrid();
+</script>
+</body>
+</html>
