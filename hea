@@ -582,6 +582,14 @@ function calculate() {
   `;
 }
 
+<footer style="
+text-align:center;
+padding:40px 0;
+font-size:0.7rem;
+color:#4a6075;
+">
+Developed by Vivekanandan A | High Entropy Alloy Research Tool
+</footer>
 initGrid();
 </script>
 </body>
